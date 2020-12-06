@@ -1,0 +1,5 @@
+#ifndef WEGA_ESP32_OPTIONS_H
+#define WEGA_ESP32_OPTIONS_H
+
+
+#endif //WEGA_ESP32_OPTIONS_H
