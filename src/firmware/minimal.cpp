@@ -5,9 +5,9 @@ WebServer server(80);
 
 #include <WiFiClient.h>
 
-
 #include <wifi.h>
 #include <ota.h>
+#include <utils.h>
 
 const uint serial = SERIAL_SPEED;
 
@@ -27,8 +27,6 @@ void setup() {
 
     server.on("/", handleRoot);
     server.begin();
-
-
 }
 
 void loop() {

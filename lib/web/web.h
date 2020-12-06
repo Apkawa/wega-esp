@@ -14,7 +14,4 @@
 #define WebServer ESP8266WebServer
 #endif
 
-
-
-
 #endif //WEGA_ESP32_WEB_H
