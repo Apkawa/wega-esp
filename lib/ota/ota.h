@@ -6,13 +6,8 @@
 #define WEGA_ESP32_OTA_H
 
 namespace Ota {
-    void setup() {
-
-    }
-
-    void loop() {
-
-    }
+    void setup(const char *hostname);
+    void loop();
 }
 
 #endif //WEGA_ESP32_OTA_H
