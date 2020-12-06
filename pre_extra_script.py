@@ -42,8 +42,9 @@ def get_env(name, default=None):
 env.Append(CPPDEFINES=[
     ("WIFI_SSID", escape(get_env('WIFI_SSID', 'ssid'))),
     ("WIFI_PASS", escape(get_env('WIFI_PASS', 'pass'))),
-    ("HOSTNAME", escape(get_env('HOSTNAME', get_project_option("hostname", env.Dump('PIOENV'))))),
-    ("SERIAL_SPEED", get_project_option("serial_speed", 115200))
+    ("HOSTNAME", escape(get_env('HOSTNAME', get_project_option("hostname", env.Dictionary()['PIOENV'])))),
+    ("SERIAL_SPEED", get_project_option("serial_speed", 115200)),
+    (env.Dictionary()['BOARD_MCU'].upper(), 1),
 ])
 
 print(env.Dump('CPPDEFINES'))

@@ -6,9 +6,11 @@
 #define WEGA_ESP32_WIFI_H
 
 
-class wifi {
-
-};
+namespace wifi {
+    void setup();
+    void setup(char const *ssid, char const *password);
+    void loop();
+}
 
 
 #endif //WEGA_ESP32_WIFI_H
