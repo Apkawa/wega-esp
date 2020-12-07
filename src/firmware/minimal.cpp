@@ -1,9 +1,8 @@
-
+#include <Arduino.h>
 #include <web.h>
 
 WebServer server(80);
 
-#include <WiFiClient.h>
 
 #include <wifi.h>
 #include <ota.h>
@@ -14,7 +13,7 @@ const uint serial = SERIAL_SPEED;
 
 void handleRoot() {
     String httpstr = "<meta http-equiv='refresh' content='10'>";
-    httpstr += "Hello World! from ota5<br>";
+    httpstr += "Hello World!<br>";
     server.send(200, "text/html", httpstr);
 }
 

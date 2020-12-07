@@ -3,7 +3,6 @@
 
 WebServer server(80);
 
-#include <WiFiClient.h>
 
 #include <wifi.h>
 #include <ota.h>
