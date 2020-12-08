@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <web.h>
 
+// TODO async server
 WebServer server(80);
 
 #include <wifi.h>

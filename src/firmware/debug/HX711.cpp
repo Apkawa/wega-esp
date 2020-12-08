@@ -8,14 +8,14 @@ const uint serial = SERIAL_SPEED;
 // http://arduinolab.pw/index.php/2017/07/03/vesy-na-arduino-i-kalibrovka-tenzodatchika-s-hx711/
 #include "HX711.h"
 
-// GPIO19
-const int LOADCELL_DOUT_PIN = 19;
-// GPIO18
-const int LOADCELL_SCK_PIN = 18;
+// GPIO17
+const int LOADCELL_DOUT_PIN = 17;
+// GPIO16
+const int LOADCELL_SCK_PIN = 16;
 
 HX711 scale;
 
-float calibration_factor = -3.7;
+float calibration_factor = -65.05;
 
 
 // Todo make helpers
@@ -23,7 +23,7 @@ void calibrationScale() {
     scale.set_scale(calibration_factor); //Adjust to this calibration factor
 
     Serial.print("Reading: ");
-    float units = scale.get_units();
+    float units = scale.get_units(64);
     if (units < 0)
     {
         units = 0.00;
@@ -40,20 +40,22 @@ void calibrationScale() {
         char temp = Serial.read();
         if(temp == '+' || temp == 'w')
             calibration_factor += 1;
-        else if(temp == '-' || temp == 'a')
+        else if(temp == '-' || temp == 's')
             calibration_factor -= 1;
         else if (temp == 'e')
             calibration_factor += 0.1;
         else if (temp == 'q')
             calibration_factor -= 0.1;
         else if (temp == 'W')
-            calibration_factor += 100;
-        else if (temp == 'A')
-            calibration_factor -= 100;
-        else if (temp == 'E')
             calibration_factor += 10;
-        else if (temp == 'Q')
+        else if (temp == 'S')
             calibration_factor -= 10;
+        else if (temp == 'E')
+            calibration_factor += 0.01;
+        else if (temp == 'Q')
+            calibration_factor -= 0.01;
+        else if (temp == 'T')
+            scale.tare(255);
     }
 }
 
