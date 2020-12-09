@@ -30,8 +30,7 @@ void calibrationScale() {
     }
     float grams = units * 0.035274f;
     Serial.print(grams);
-    Serial.print(" grams");
-    Serial.print(" calibration_factor: ");
+    Serial.print(";");
     Serial.print(calibration_factor);
     Serial.println();
 
@@ -72,7 +71,6 @@ void setup() {
 
     delay (3000);
     scale.tare(255);
-
 }
 
 void loop() {

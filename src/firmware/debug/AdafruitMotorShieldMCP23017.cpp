@@ -8,45 +8,45 @@ WebServer server(80);
 #include <ota.h>
 #include <utils.h>
 
-#include <AFShield.h>
-
-const uint serial = SERIAL_SPEED;
-
 // https://www.dessy.ru/include/images/ware/pdf/s/shield_l293d.pdf
 // Поддержка шилда Adafruit Motor Shield (4DC или 2stepper/servos)
 // http://robotosha.ru/arduino/motor-shield.html
 // https://cdn-learn.adafruit.com/assets/assets/000/009/536/original/adafruit_products_mshieldv2schem.png?1396892649
 
-AFShield<> shield(
-        18,
+#include <AFShield.h>
+#include <AdapterPin/MCP23017PinAdapter.h>
+#include "Adafruit_MCP23017.h"
+
+Adafruit_MCP23017 mcp;
+MCP23017PinAdapter pinAdapter(mcp);
+
+AFShield<MCP23017PinAdapter> shield(
+        &pinAdapter,
         4,
-        17,
-        5,
+        0,
+        2,
+        3,
         0,
         0,
         0,
-        16,
+        1,
         0,
         0
 );
+
 auto motor1 = shield.getMotor(4);
 
-void handleRoot() {
-    String httpstr = "<meta http-equiv='refresh' content='10'>";
-    httpstr += "Hello World!<br>";
-    server.send(200, "text/html", httpstr);
-}
+const uint serial = SERIAL_SPEED;
+
+
 
 void setup() {
     Serial.begin(serial);
     Serial.println("Booting");
 
-    wifi::setup();
-    Ota::setup();
 
-    server.on("/", handleRoot);
-    server.begin();
-
+    mcp.begin();
+    Serial.println("Mcp");
     motor1.release();
 }
 

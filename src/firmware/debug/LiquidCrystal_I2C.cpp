@@ -9,6 +9,10 @@ WebServer server(80);
 
 const uint serial = SERIAL_SPEED;
 
+// I2C esp32
+// GPIO21 - SDA
+// GPIO22 - SCL
+
 //Тип подключения дисплея: 1 - по шине I2C, 2 - десятиконтактное. Обязательно указывать ДО подключения библиотеки
 //Если этого не сделать, при компиляции возникнет ошибка: "LCD type connect has not been declared"
 #define _LCD_TYPE 1

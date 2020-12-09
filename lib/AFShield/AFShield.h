@@ -5,6 +5,7 @@
 #include <Arduino.h>
 // For analogWrite
 #include <esp32-hal-ledc.h>
+#include <AdapterPin/DefaultPinAdapter.h>
 
 
 // Pins
@@ -24,12 +25,13 @@
 
 typedef uint8_t pin;
 
+template<class PinAdapter=DefaultPinAdapter>
 class AFShield {
 private:
     // Interface
     class AFMotor {
     public:
-        AFMotor(AFShield &shield, uint8_t number) : number(number), shield(shield) {};
+        AFMotor(AFShield<PinAdapter> &shield, uint8_t number) : number(number), shield(shield) {};
 
         void forward();
 
@@ -64,22 +66,29 @@ public:
             pinLatch(MOTORLATCH),
             pinClk(MOTORCLK),
             pinEnable(MOTORENABLE),
-            pinData(MOTORDATA) {
-
+            pinData(MOTORDATA),
+            pinMotor1Speed(MOTOR1_PWM),
+            pinMotor2Speed(MOTOR2_PWM),
+            pinMotor3Speed(MOTOR3_PWM),
+            pinMotor4Speed(MOTOR4_PWM),
+            pinServo1Speed(SERVO1_PWM),
+            pinServo2Speed(SERVO2_PWM),
+            pinAdapter(new PinAdapter()) {
     }
 
-    AFShield(
-            pin pinLatch,
-            pin pinClk,
-            pin pinEnable,
-            pin pinData
-    ) :
-            pinLatch(pinLatch),
-            pinClk(pinClk),
-            pinEnable(pinEnable),
-            pinData(pinData) {
-
-    };
+    AFShield(PinAdapter *pinAdapter) :
+            pinLatch(MOTORLATCH),
+            pinClk(MOTORCLK),
+            pinEnable(MOTORENABLE),
+            pinData(MOTORDATA),
+            pinMotor1Speed(MOTOR1_PWM),
+            pinMotor2Speed(MOTOR2_PWM),
+            pinMotor3Speed(MOTOR3_PWM),
+            pinMotor4Speed(MOTOR4_PWM),
+            pinServo1Speed(SERVO1_PWM),
+            pinServo2Speed(SERVO2_PWM),
+            pinAdapter(pinAdapter) {
+    }
 
     AFShield(
             pin pinLatch,
@@ -102,11 +111,37 @@ public:
             pinMotor3Speed(pinMotor3Speed),
             pinMotor4Speed(pinMotor4Speed),
             pinServo1Speed(pinServo1Speed),
-            pinServo2Speed(pinServo2Speed) {
-
+            pinServo2Speed(pinServo2Speed),
+            pinAdapter(new PinAdapter()) {
     };
 
-    const AFMotor &getMotor(uint8_t nMotor);
+    AFShield(
+            PinAdapter *pinAdapter,
+            pin pinLatch,
+            pin pinClk,
+            pin pinEnable,
+            pin pinData,
+            pin pinMotor1Speed,
+            pin pinMotor2Speed,
+            pin pinMotor3Speed,
+            pin pinMotor4Speed,
+            pin pinServo1Speed,
+            pin pinServo2Speed
+    ) :
+            pinLatch(pinLatch),
+            pinClk(pinClk),
+            pinEnable(pinEnable),
+            pinData(pinData),
+            pinMotor1Speed(pinMotor1Speed),
+            pinMotor2Speed(pinMotor2Speed),
+            pinMotor3Speed(pinMotor3Speed),
+            pinMotor4Speed(pinMotor4Speed),
+            pinServo1Speed(pinServo1Speed),
+            pinServo2Speed(pinServo2Speed),
+            pinAdapter(pinAdapter) {
+    };
+
+    const AFMotor & getMotor(uint8_t nMotor);
 
 //    AFServo getServo(uint8_t nServo);
 
@@ -141,7 +176,10 @@ private:
     // Cache
     AFMotor *motors[4] = {nullptr};
     AFServo *servos[2] = {nullptr};
+    PinAdapter *pinAdapter;
 };
+
+#include "AFShield.tpp"
 
 
 #endif //AFSHIELD_H
