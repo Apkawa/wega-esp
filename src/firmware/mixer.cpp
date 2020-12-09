@@ -288,6 +288,26 @@ void handleTest() {
     }
 }
 
+// TODO встроенная калибровка весов миксера
+void handleCalibrationScale() {
+    String httpstr = "<meta>"
+                     "<h1>Calibrate</h1>"
+                     ;
+
+    float calA = server.arg('a').toFloat();
+    float calB = server.arg('b').toFloat();
+
+    httpstr += "A=" + formatFloat(CALIBRATION_FACTOR_A, 3) + "<br>";
+    httpstr += "B=" + formatFloat(CALIBRATION_FACTOR_B, 3) + "<br>";
+
+    httpstr += "";
+
+    scale.set_scale(calA);
+    auto weightA = scale.get_value(64);
+
+    scale.set_scale(calB);
+    auto weightB = scale.get_value(64);
+}
 
 void setup() {
     Serial.begin(serial);
