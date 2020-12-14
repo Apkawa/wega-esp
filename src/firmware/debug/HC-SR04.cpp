@@ -1,8 +1,3 @@
-
-#include <web.h>
-
-WebServer server(80);
-
 #include <WiFiClient.h>
 
 #include <wifi.h>
@@ -64,11 +59,6 @@ float ultraSonic(int triggerPin, int echoPin, float temperature, float humidity,
     return float((vSound / 10000) * ( avg_time / 2));
 }
 
-void handleRoot() {
-    String httpstr = "<meta http-equiv='refresh' content='10'>";
-    httpstr += "Hello World!<br>";
-    server.send(200, "text/html", httpstr);
-}
 
 void setup() {
     Serial.begin(serial);
@@ -77,12 +67,9 @@ void setup() {
     wifi::setup();
     Ota::setup();
 
-    server.on("/", handleRoot);
-    server.begin();
 }
 
 void loop() {
-    server.handleClient();
     Ota::loop();
 
     Serial.print("ultraSonic: ");

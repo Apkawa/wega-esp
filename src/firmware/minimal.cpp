@@ -6,9 +6,6 @@ WebServer server(80);
 
 #include <wifi.h>
 #include <ota.h>
-#include <utils.h>
-
-const uint serial = SERIAL_SPEED;
 
 
 void handleRoot() {
@@ -18,7 +15,7 @@ void handleRoot() {
 }
 
 void setup() {
-    Serial.begin(serial);
+    Serial.begin(SERIAL_SPEED);
     Serial.println("Booting");
 
     wifi::setup();

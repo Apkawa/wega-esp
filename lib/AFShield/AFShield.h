@@ -7,6 +7,11 @@
 #include <esp32-hal-ledc.h>
 #include <AdapterPin/DefaultPinAdapter.h>
 
+// Constants that the user passes in to the stepper calls
+#define SINGLE 1
+#define DOUBLE 2
+#define INTERLEAVE 3
+#define MICROSTEP 4
 
 // Pins
 #define MOTORLATCH 12
@@ -54,11 +59,18 @@ private:
 //        void writeMicroseconds(int uS);
 //
 //        int read();
+        void step(uint16_t steps, uint8_t dir,  uint8_t style = SINGLE);
+        void setSpeed(uint16_t);
+        uint8_t onestep(uint8_t dir, uint8_t style);
+        void release(void);
+        uint16_t revsteps; // # steps per revolution
+        uint8_t steppernum;
+        uint32_t usperstep, steppingcounter;
+    private:
+        uint8_t currentstep;
 
     private:
         AFShield *shield;
-//        Servo servo;
-        // TODO Servo.h
     };
 
 public:

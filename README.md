@@ -1,6 +1,10 @@
-# Wega-esp
+# wega-esp
 
 Working on esp32 and esp8266
+
+Проект по сборке
+* [Миксера](docs/mixer/README.md) - приготовление растворов из концентратов по рецепту
+* [Веги](docs/wega/README.md) - мониторинг системы
 
 ## Before use
 
