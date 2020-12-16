@@ -19,3 +19,5 @@ Working on esp32 and esp8266
 * https://docs.platformio.org/en/latest/platforms/espressif32.html
 * https://docs.espressif.com/projects/esp-idf/en/latest/esp32/hw-reference/esp32/get-started-devkitc.html
 * https://components101.com/microcontrollers/esp32-devkitc
+* http://zelectro.cc/I2C_pull-up/
+* https://elchupanibrei.livejournal.com/23293.html

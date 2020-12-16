@@ -1,4 +1,4 @@
-#include <WiFiClient.h>
+#include <Arduino.h>
 
 #include <wifi.h>
 #include <ota.h>
