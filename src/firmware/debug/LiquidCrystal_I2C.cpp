@@ -19,7 +19,7 @@ const uint serial = SERIAL_SPEED;
 #include <Wire.h>
 #include <LCD_1602_RUS_ALL.h>
 
-LCD_1602_RUS <LiquidCrystal_I2C>  lcd(0x27, 16, 2); // Check I2C address of LCD, normally 0x27 or 0x3F
+LCD_1602_RUS  lcd(0x27, 16, 2); // Check I2C address of LCD, normally 0x27 or 0x3F
 
 
 void handleRoot() {
