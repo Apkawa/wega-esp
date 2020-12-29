@@ -20,7 +20,7 @@
 
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::shiftWrite(uint8_t output, uint8_t high_low) {
+void AFShield<PinAdapter>::shiftWrite(uint8_t output, uint8_t high_low) const {
     static int latch_copy;
     static int shift_register_initialized = false;
 // Do the initialization on the fly,
@@ -53,7 +53,7 @@ void AFShield<PinAdapter>::shiftWrite(uint8_t output, uint8_t high_low) {
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::motorOutput(uint8_t output, uint8_t high_low, int speed) {
+void AFShield<PinAdapter>::motorOutput(uint8_t output, uint8_t high_low, int speed) const {
     int motorPWM;
 
     switch (output) {
@@ -86,7 +86,7 @@ void AFShield<PinAdapter>::motorOutput(uint8_t output, uint8_t high_low, int spe
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::motor(uint8_t nMotor, uint8_t command, int speed) {
+void AFShield<PinAdapter>::motor(uint8_t nMotor, uint8_t command, int speed) const {
     if (nMotor < 1 || nMotor > 4) return;
 
     int motorA, motorB;
@@ -133,7 +133,7 @@ void AFShield<PinAdapter>::motor(uint8_t nMotor, uint8_t command, int speed) {
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::_pinMode(uint8_t pin, uint8_t mode) {
+void AFShield<PinAdapter>::_pinMode(uint8_t pin, uint8_t mode) const {
     Serial.print("PIN_MODE");
     Serial.print(pin);
     Serial.print(" ");
@@ -143,7 +143,7 @@ void AFShield<PinAdapter>::_pinMode(uint8_t pin, uint8_t mode) {
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::_digitalWrite(uint8_t pin, uint8_t val) {
+void AFShield<PinAdapter>::_digitalWrite(uint8_t pin, uint8_t val) const {
     Serial.print("digitalWrite");
     Serial.print(pin);
     Serial.print(" ");
@@ -153,12 +153,12 @@ void AFShield<PinAdapter>::_digitalWrite(uint8_t pin, uint8_t val) {
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::_analogWrite(uint8_t pin, uint8_t val) {
+void AFShield<PinAdapter>::_analogWrite(uint8_t pin, uint8_t val) const {
     pinAdapter->_analogWrite(pin, val);
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::_shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val) {
+void AFShield<PinAdapter>::_shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val) const {
     Serial.print("shiftOut");
     Serial.print(dataPin);
     Serial.print(" ");
@@ -179,27 +179,31 @@ const typename AFShield<PinAdapter>::AFMotor &AFShield<PinAdapter>::getMotor(uin
     return _m;
 }
 
+template<class PinAdapter>
+const AFShield<PinAdapter> &AFShield<PinAdapter>::AFMotor::getShield() const {
+    return this->shield;
+}
 
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::AFMotor::forward() {
-    shield.motor(number, FORWARD, 255);
-
+void AFShield<PinAdapter>::AFMotor::forward() const {
+    getShield().motor(number, FORWARD, 255);
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::AFMotor::backward() {
+void AFShield<PinAdapter>::AFMotor::backward() const {
     shield.motor(number, BACKWARD, 255);
 
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::AFMotor::stop() {
+void AFShield<PinAdapter>::AFMotor::stop() const {
     shield.motor(number, BRAKE, 255);
 }
 
 template<class PinAdapter>
-void AFShield<PinAdapter>::AFMotor::release() {
+void AFShield<PinAdapter>::AFMotor::release() const {
     shield.motor(number, RELEASE, 255);
 
 }
+

@@ -36,19 +36,20 @@ private:
     // Interface
     class AFMotor {
     public:
-        AFMotor(AFShield<PinAdapter> &shield, uint8_t number) : number(number), shield(shield) {};
+        AFMotor(const AFShield<PinAdapter> &shield, uint8_t number) : number(number), shield(shield) {};
 
-        void forward();
+        void forward() const;
 
-        void backward();
+        void backward() const;
 
-        void stop();
+        void stop() const;
 
-        void release();
+        void release() const;
 
     private:
         uint8_t number;
-        AFShield &shield;
+        const AFShield &shield;
+        const AFShield& getShield() const;
     };
 
     class AFServo {
@@ -158,20 +159,20 @@ public:
 //    AFServo getServo(uint8_t nServo);
 
 private:
-    void shiftWrite(uint8_t output, uint8_t high_low);
+    void shiftWrite(uint8_t output, uint8_t high_low) const;
 
-    void motorOutput(uint8_t output, uint8_t high_low, int speed);
+    void motorOutput(uint8_t output, uint8_t high_low, int speed) const;
 
-    void motor(uint8_t nMotor, uint8_t command, int speed);
+    void motor(uint8_t nMotor, uint8_t command, int speed) const;
 
     // wrapper of pin
-    void _pinMode(uint8_t pin, uint8_t mode);
+    void _pinMode(uint8_t pin, uint8_t mode) const;
 
-    void _digitalWrite(uint8_t pin, uint8_t val);
+    void _digitalWrite(uint8_t pin, uint8_t val) const;
 
-    void _analogWrite(uint8_t pin, uint8_t val);
+    void _analogWrite(uint8_t pin, uint8_t val) const;
 
-    void _shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
+    void _shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val) const;
 
     pin pinLatch;
     pin pinClk;

@@ -9,17 +9,53 @@ WebServer server(80);
 #include <utils.h>
 
 #include <Wire.h>
+
+#include <AFShield.h>
+#include <AdapterPin/MCP23017PinAdapter.h>
 #include "Adafruit_MCP23017.h"
+
 Adafruit_MCP23017 mcp;
+MCP23017PinAdapter pinAdapter(mcp);
+
+AFShield<MCP23017PinAdapter> shield1(
+        &pinAdapter,
+        4,
+        0,
+        2,
+        3,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+);
+
+AFShield<MCP23017PinAdapter> shield2(
+        &pinAdapter,
+        4,
+        0,
+        2,
+        3,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+);
+
 
 //Тип подключения дисплея: 1 - по шине I2C, 2 - десятиконтактное. Обязательно указывать ДО подключения библиотеки
 //Если этого не сделать, при компиляции возникнет ошибка: "LCD type connect has not been declared"
 #define _LCD_TYPE 1
+
 #include <LCD_1602_RUS_ALL.h>
 
 LCD_1602_RUS lcd(0x27, 16, 2); // Check I2C address of LCD, normally 0x27 or 0x3F
 
 #include "HX711.h"
+
 // GPIO19
 const int LOADCELL_DOUT_PIN = 19;
 // GPIO18
@@ -43,70 +79,60 @@ enum Side {
     B
 };
 
+
 struct PumpInfo {
-    const uint8_t pinDirect;
-    const uint8_t pinReverse;
+    const typeof(shield1.getMotor(0)) *pump;
     const char *name;
     const Side side;
+    // предварительная подкачка раствора из трубок, в мс по умолчанию - 5000 мс
+    const uint16_t preload;
     float pumped;
     float plan;
 };
 
+
 // TODO pass from env
 PumpInfo PUMPS[] = {
-        {11, 3,  "Ca(NO3)2",     A},
-        {2,  10, "KNO3",         A},
-        {1,  9,  "NH4NO3",       A},
-        {0,  8,  "MgSO4",        B},
-        {7,  15, "KH2PO4",       B},
-        {6,  14, "K2SO4",        B},
-        {5,  13, "Micro 1000:1", B},
-        {4,  12, "B",            B},
+        {&shield1.getMotor(1), "Ca(NO3)2", A},
+        {&shield1.getMotor(2), "KNO3", A},
+        {&shield1.getMotor(3), "NH4NO3", A},
+        {&shield1.getMotor(5), "MgSO4", B},
+        {&shield2.getMotor(1), "KH2PO4", B},
+        {&shield2.getMotor(2), "K2SO4", B},
+        {&shield2.getMotor(3), "Micro 1000:1", B},
+        {&shield2.getMotor(4), "B", B},
 };
 
 const uint8_t TOTAL_PUMPS = sizeof PUMPS / sizeof *PUMPS;
 
+
 // Функции помп
 
-void pumpStart(uint8_t pinDirect, uint8_t pinReverse) {
-    mcp.begin();
-    mcp.pinMode(pinDirect, OUTPUT);
-    mcp.pinMode(pinReverse, OUTPUT);
-    mcp.digitalWrite(pinDirect, HIGH);
-    mcp.digitalWrite(pinReverse, LOW);
+void pumpStart(const PumpInfo *pump)  {
+    pump->pump->forward();
 }
 
-void pumpStop(uint8_t pinDirect, uint8_t pinReverse) {
-    mcp.begin();
-    mcp.pinMode(pinDirect, OUTPUT);
-    mcp.pinMode(pinReverse, OUTPUT);
-    mcp.digitalWrite(pinDirect, LOW);
-    mcp.digitalWrite(pinReverse, LOW);
+void pumpStop(PumpInfo *pump) {
+    pump->pump->stop();
 }
 
-void pumpReverse(uint8_t pinDirect, uint8_t pinReverse) {
-    mcp.begin();
-    mcp.pinMode(pinDirect, OUTPUT);
-    mcp.pinMode(pinReverse, OUTPUT);
-    mcp.digitalWrite(pinDirect, LOW);
-    mcp.digitalWrite(pinReverse, HIGH);
+void pumpReverse(PumpInfo *pump) {
+    pump->pump->backward();
 }
+
 
 //Функция налива
-float pumping(PumpInfo *pump, uint preload) {
-    uint8_t pinDirect = pump->pinDirect;
-    uint8_t pinReverse = pump->pinReverse;
+float pumping(PumpInfo *pump) {
     float planWeight = pump->plan;
     auto name = pump->name;
-    //
+    // Либо нечего наливать либо наливаем почти всю бутылку
     if (planWeight <= 0 || planWeight >= CONCENTRATE_TARE_VOLUME) {
-        // Либо нечего наливать либо наливаем почти всю бутылку
         lcd.setCursor(0, 0);
         lcd.print(name);
         lcd.print(":");
         lcd.print(formatFloat(planWeight, 2));
         lcd.setCursor(10, 0);
-        lcd.print("SKIP..   ");
+        lcd.print("SKIP...   ");
         delay(1000);
         return 0.0f;
     } else {
@@ -115,7 +141,7 @@ float pumping(PumpInfo *pump, uint preload) {
         lcd.setCursor(0, 0);
         lcd.print(name);
         lcd.print(" Reverse...");
-        pumpReverse(pinDirect, pinReverse);
+        pumpReverse(pump);
         delay(30000);
 
         lcd.clear();
@@ -123,14 +149,20 @@ float pumping(PumpInfo *pump, uint preload) {
         lcd.print(name);
         lcd.setCursor(0, 1);
         lcd.print(" Preload=");
+        uint16_t preload = 5000;
+        if (pump->preload > 0) {
+            preload = pump->preload;
+        }
         lcd.print(formatFloat(preload, 0));
         lcd.print("ms");
-        scale.tare(255);
 
-        pumpStart(pinDirect, pinReverse);
+        pumpStart(pump);
         delay(preload);
-        pumpStop(pinDirect, pinReverse);
+        pumpStop(pump);
 
+        //
+        scale.tare(255);
+        //
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print(name);
@@ -152,7 +184,7 @@ float pumping(PumpInfo *pump, uint preload) {
             lcd.print(accuratePumpDelay, 0);
             lcd.print("ms     ");
 
-            pumpStart(pinDirect, pinReverse);
+            pumpStart(pump);
             if (value < (planWeight - 1.5)) {
                 if (planWeight - value > 20) { delay(10000); } else { delay(2000); }
                 pumpedValue = value;
@@ -161,30 +193,36 @@ float pumping(PumpInfo *pump, uint preload) {
                 lcd.setCursor(10, 0);
                 lcd.print("PCIS ");
 
-                if (value - pumpedValue < 0.01) { if (accuratePumpDelay < 80) { accuratePumpDelay = accuratePumpDelay + 2; }}
-                if (value - pumpedValue > 0.01) { if (accuratePumpDelay > 2) { accuratePumpDelay = accuratePumpDelay - 2; }}
+                if (value - pumpedValue < 0.01) {
+                    if (accuratePumpDelay < 80) {
+                        accuratePumpDelay = accuratePumpDelay + 2;
+                    }
+                }
+                if (value - pumpedValue > 0.01) {
+                    if (accuratePumpDelay > 2) {
+                        accuratePumpDelay = accuratePumpDelay - 2;
+                    }
+                }
                 if (value - pumpedValue > 0.1) { accuratePumpDelay = 0; }
 
                 pumpedValue = value;
                 delay(accuratePumpDelay);
-
             }
-            //mcp.digitalWrite(npump, LOW);
-            pumpStop(pinDirect, pinReverse);
-            delay(100);
-
+            pumpStop(pump);
+            delay(1000);
             value = scale.get_units(254);
         }
-        pumpStop(pinDirect, pinReverse);
+        pumpStop(pump);
 
         lcd.setCursor(0, 1);
         lcd.print(value, 2);
         lcd.print(" (");
         lcd.print(100 - (planWeight - value) / planWeight * 100, 2);
         lcd.print("%)      ");
-        pumpReverse(pinDirect, pinReverse);
+        // Продувка
+        pumpReverse(pump);
         delay(10000);
-        pumpStop(pinDirect, pinReverse);
+        pumpStop(pump);
         return value;
     }
 }
@@ -249,6 +287,7 @@ void handleStart() {
     }
     server.send(200, "text/html", httpstr);
 
+    scale.tare(255);
     // TODO защита от перелива
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
         auto pump = &PUMPS[i];
@@ -259,7 +298,7 @@ void handleStart() {
         else
             scale.set_scale(CALIBRATION_FACTOR_B);
 
-        pump->pumped = pumping(pump, 5000);
+        pump->pumped = pumping(pump);
     }
 
     sendReport();
@@ -274,25 +313,31 @@ void handleTest() {
         auto pump_index = formatFloat(i + 1, 0);
         lcd.home();
         lcd.print("Pump " + pump_index + " Start");
-        pumpStart(pump.pinDirect, pump.pinReverse);
+        pumpStart(&pump);
         delay(dl);
         lcd.home();
         lcd.print("Pump " + pump_index + " Reverse       ");
-        pumpReverse(pump.pinDirect, pump.pinReverse);
+        pumpReverse(&pump);
         delay(dl);
         lcd.home();
         lcd.print("Pump " + pump_index + " Stop      ");
         delay(1000);
-        pumpStop(pump.pinDirect, pump.pinReverse);
+        pumpStop(&pump);
         lcd.home();
     }
+}
+
+// TODO калибровка прелоада
+void handlePumpPreloadCalibration() {
+    String httpstr = "<meta>"
+                     "<h1>Calibrate</h1>";
+
 }
 
 // TODO встроенная калибровка весов миксера
 void handleCalibrationScale() {
     String httpstr = "<meta>"
-                     "<h1>Calibrate</h1>"
-                     ;
+                     "<h1>Calibrate</h1>";
 
     float calA = server.arg('a').toFloat();
     float calB = server.arg('b').toFloat();
@@ -307,11 +352,22 @@ void handleCalibrationScale() {
 
     scale.set_scale(calB);
     auto weightB = scale.get_value(64);
+
+    httpstr += "Weight A=" + formatFloat(weightA, 2) + "<br>";
+    httpstr += "Weight B=" + formatFloat(weightB, 2) + "<br>";
+
+    // TODO form
+
+    server.send(200, "text/html", httpstr)
+
 }
 
 void setup() {
     Serial.begin(serial);
     Serial.println("Booting");
+
+    lcd.setCursor(10, 0);
+    lcd.print("Booting...");
 
     wifi::setup();
     Ota::setup();
@@ -320,6 +376,12 @@ void setup() {
     server.on("/start", handleStart);
     server.on("/test", handleTest);
     server.begin();
+
+    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+    scale.power_up();
+
+    lcd.setCursor(10, 0);
+    lcd.print("Start");
 }
 
 void loop() {
