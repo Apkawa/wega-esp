@@ -20,7 +20,7 @@ WebServer server(80);
 Adafruit_MCP23017 mcp;
 MCP23017PinAdapter pinAdapter(mcp);
 
-AFShield<MCP23017PinAdapter> shield(
+AFShield<MCP23017PinAdapter> shield1(
         &pinAdapter,
         4,
         0,
@@ -34,7 +34,7 @@ AFShield<MCP23017PinAdapter> shield(
         0
 );
 
-auto motor1 = shield.getMotor(4);
+auto motor1 = shield1.getMotor(4);
 
 const uint serial = SERIAL_SPEED;
 

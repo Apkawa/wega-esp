@@ -17,7 +17,7 @@ const uint serial = SERIAL_SPEED;
 // http://robotosha.ru/arduino/motor-shield.html
 // https://cdn-learn.adafruit.com/assets/assets/000/009/536/original/adafruit_products_mshieldv2schem.png?1396892649
 
-AFShield<> shield(
+AFShield<> shield1(
         18,
         4,
         17,
@@ -29,7 +29,7 @@ AFShield<> shield(
         0,
         0
 );
-auto motor1 = shield.getMotor(4);
+auto motor1 = shield1.getMotor(4);
 
 void handleRoot() {
     String httpstr = "<meta http-equiv='refresh' content='10'>";
