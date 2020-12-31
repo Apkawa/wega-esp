@@ -91,9 +91,8 @@ enum Side {
     B
 };
 
-
 struct PumpInfo {
-    const typeof(shield1.getMotor(0)) *pump;
+    decltype(shield1.getMotor(0)) pump;
     const char *name;
     const Side side;
     // предварительная подкачка раствора из трубок, в мс по умолчанию - 5000 мс
@@ -105,14 +104,14 @@ struct PumpInfo {
 
 // TODO pass from env
 PumpInfo PUMPS[] = {
-        {&shield1.getMotor(1), "Ca(NO3)2",     A},
-        {&shield1.getMotor(2), "KNO3",         A},
-        {&shield1.getMotor(3), "NH4NO3",       A},
-        {&shield1.getMotor(5), "MgSO4",        B},
-        {&shield2.getMotor(1), "KH2PO4",       B},
-        {&shield2.getMotor(2), "K2SO4",        B},
-        {&shield2.getMotor(3), "Micro 1000:1", B},
-        {&shield2.getMotor(4), "B",            B},
+        {shield1.getMotor(1), "Ca(NO3)2",     A},
+        {shield1.getMotor(2), "KNO3",         A},
+        {shield1.getMotor(3), "NH4NO3",       A},
+        {shield1.getMotor(5), "MgSO4",        B},
+        {shield2.getMotor(1), "KH2PO4",       B},
+        {shield2.getMotor(2), "K2SO4",        B},
+        {shield2.getMotor(3), "Micro 1000:1", B},
+        {shield2.getMotor(4), "B",            B},
 };
 
 const uint8_t TOTAL_PUMPS = sizeof PUMPS / sizeof *PUMPS;
@@ -121,15 +120,15 @@ const uint8_t TOTAL_PUMPS = sizeof PUMPS / sizeof *PUMPS;
 // Функции помп
 
 void pumpStart(const PumpInfo *pump) {
-    pump->pump->forward();
+    pump->pump.forward();
 }
 
 void pumpStop(const PumpInfo *pump) {
-    pump->pump->stop();
+    pump->pump.stop();
 }
 
 void pumpReverse(const PumpInfo *pump) {
-    pump->pump->backward();
+    pump->pump.backward();
 }
 
 
