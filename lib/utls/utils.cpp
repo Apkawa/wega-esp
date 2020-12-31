@@ -18,5 +18,9 @@ float kalman_filter(float val) {
     Xp1 = Xe1;
     Zp1 = Xp1;
     Xe1 = G1 * (val - Zp1) + Xp1; // "фильтрованное" значение
-    return (Xe1);
+
+    if (abs(val - Xe1) / Xe1 > 0.05) {
+        Xe1 = val;
+    }
+    return Xe1;
 }

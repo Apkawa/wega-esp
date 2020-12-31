@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 // For analogWrite
-#include <esp32-hal-ledc.h>
+//#include <esp32-hal-ledc.h>
 #include <AdapterPin/DefaultPinAdapter.h>
 
 // Constants that the user passes in to the stepper calls
