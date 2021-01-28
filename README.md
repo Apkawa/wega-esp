@@ -21,3 +21,4 @@ Working on esp32 and esp8266
 * https://components101.com/microcontrollers/esp32-devkitc
 * http://zelectro.cc/I2C_pull-up/
 * https://elchupanibrei.livejournal.com/23293.html
+* https://techtutorialsx.com/2017/04/02/esp8266-nodemcu-pin-mappings/

@@ -9,13 +9,13 @@ const uint serial = SERIAL_SPEED;
 #include "HX711.h"
 
 // GPIO17
-const int LOADCELL_DOUT_PIN = 17;
+const int LOADCELL_DOUT_PIN = 25;
 // GPIO16
-const int LOADCELL_SCK_PIN = 16;
+const int LOADCELL_SCK_PIN = 26;
 
 HX711 scale;
 
-float calibration_factor = -65.05;
+float calibration_factor = 1000;
 
 
 // Todo make helpers
@@ -28,8 +28,7 @@ void calibrationScale() {
     {
         units = 0.00;
     }
-    float grams = units * 0.035274f;
-    Serial.print(grams);
+    Serial.print(units);
     Serial.print(";");
     Serial.print(calibration_factor);
     Serial.println();

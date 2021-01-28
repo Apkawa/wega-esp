@@ -20,28 +20,28 @@ MCP23017PinAdapter pinAdapter(mcp);
 
 AFShield<MCP23017PinAdapter> shield1(
         &pinAdapter,
-        4,
-        0,
-        2,
-        3,
-        0,
-        0,
-        0,
-        1,
+        11, // B3
+        8, // B0
+        2, // A2
+        10, // B2
+        3, // A3
+        0, // A0
+        9, // B1
+        1, // A1
         0,
         0
 );
 
 AFShield<MCP23017PinAdapter> shield2(
         &pinAdapter,
-        4,
-        0,
-        2,
-        3,
-        0,
-        0,
-        0,
-        1,
+        15, // B7
+        12, // B4
+        6, // A6
+        14, // B6
+        7, // A7
+        4, // A4
+        13, // B5
+        5, // A5
         0,
         0
 );
@@ -59,13 +59,11 @@ LCD_1602_RUS lcd(0x27, 16, 2); // Check I2C address of LCD, normally 0x27 or 0x3
 #include "HX711.h"
 
 #ifndef LOADCELL_DOUT_PIN
-// GPIO19
-#define LOADCELL_DOUT_PIN 19
+#define LOADCELL_DOUT_PIN D5 // D5 or GPIO 14
 #endif
 
 #ifndef LOADCELL_SCK_PIN
-// GPIO18
-#define LOADCELL_SCK_PIN 18
+#define LOADCELL_SCK_PIN D6 // D6 or GPIO 12
 #endif
 
 HX711 scale;
@@ -107,7 +105,7 @@ PumpInfo PUMPS[] = {
         {shield1.getMotor(1), "Ca(NO3)2",     A},
         {shield1.getMotor(2), "KNO3",         A},
         {shield1.getMotor(3), "NH4NO3",       A},
-        {shield1.getMotor(5), "MgSO4",        B},
+        {shield1.getMotor(4), "MgSO4",        B},
         {shield2.getMotor(1), "KH2PO4",       B},
         {shield2.getMotor(2), "K2SO4",        B},
         {shield2.getMotor(3), "Micro 1000:1", B},
@@ -320,22 +318,24 @@ void handleStart() {
 }
 
 void handleTest() {
-    float dl = 30000;
+    float dl = 5000;
     server.send(200, "text/html", "testing pump...");
 
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
         auto pump = PUMPS[i];
         auto pump_index = formatFloat(i + 1, 0);
+        lcd.setCursor(0, 1);
+        lcd.print("Pump" + pump_index + " " + pump.name);
         lcd.home();
-        lcd.print("Pump " + pump_index + " Start");
+        lcd.print("Start     ");
         pumpStart(&pump);
         delay(dl);
         lcd.home();
-        lcd.print("Pump " + pump_index + " Reverse       ");
+        lcd.print("Reverse       ");
         pumpReverse(&pump);
         delay(dl);
         lcd.home();
-        lcd.print("Pump " + pump_index + " Stop      ");
+        lcd.print("Stop      ");
         delay(1000);
         pumpStop(&pump);
         lcd.home();
@@ -500,12 +500,15 @@ void handleCalibrationScale() {
 void setup() {
     Serial.begin(SERIAL_SPEED);
     Serial.println("Booting");
-
+    lcd.init();
+    lcd.backlight();
     lcd.setCursor(10, 0);
     lcd.print("Booting...");
 
     wifi::setup();
     Ota::setup();
+
+    mcp.begin();
 
     server.on("/", handleRoot);
     server.on("/start", handleStart);
@@ -515,16 +518,23 @@ void setup() {
     server.begin();
 
     scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+    scale.set_scale(1753.f); //A side
     scale.power_up();
+
 
     lcd.setCursor(10, 0);
     lcd.print("Start");
     Serial.println("Start");
+
+    delay (3000);
+    scale.tare(255);
 }
 
 void loop() {
     server.handleClient();
     Ota::loop();
+
+    Serial.println(".");
 
     lcd.setCursor(0, 1);
     float weight = scale.get_units(16);
@@ -533,6 +543,7 @@ void loop() {
     lcd.print("         ");
     lcd.setCursor(10, 0);
     lcd.print("Ready  ");
+    lcd.setCursor(0, 0);
 
 }
 
