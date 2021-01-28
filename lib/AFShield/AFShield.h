@@ -39,11 +39,8 @@ private:
         AFMotor(const AFShield<PinAdapter> &shield, uint8_t number) : number(number), shield(shield) {};
 
         void forward() const;
-
         void backward() const;
-
         void stop() const;
-
         void release() const;
 
     private:
@@ -159,11 +156,11 @@ public:
 //    AFServo getServo(uint8_t nServo);
 
 private:
-    void shiftWrite(uint8_t output, uint8_t high_low) const;
+    void shiftWrite(uint8_t output, uint8_t high_low);
 
-    void motorOutput(uint8_t output, uint8_t high_low, int speed) const;
+    void motorOutput(uint8_t output, uint8_t high_low, int speed);
 
-    void motor(uint8_t nMotor, uint8_t command, int speed) const;
+    void motor(uint8_t nMotor, uint8_t command, int speed);
 
     // wrapper of pin
     void _pinMode(uint8_t pin, uint8_t mode) const;
@@ -190,6 +187,7 @@ private:
     AFMotor *motors[4] = {nullptr};
     AFServo *servos[2] = {nullptr};
     PinAdapter *pinAdapter;
+    int shift_register_initialized = false;
 };
 
 #include "AFShield.tpp"

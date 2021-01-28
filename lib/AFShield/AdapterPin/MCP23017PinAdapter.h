@@ -9,13 +9,33 @@
 #include "Wire.h"
 #include "Adafruit_MCP23017.h"
 
+#define MCP23017_A0         0
+#define MCP23017_A1         1
+#define MCP23017_A2         2
+#define MCP23017_A3         3
+#define MCP23017_A4         4
+#define MCP23017_A5         5
+#define MCP23017_A6         6
+#define MCP23017_A7         7
+#define MCP23017_B0         8
+#define MCP23017_B1         9
+#define MCP23017_B2         10
+#define MCP23017_B3         11
+#define MCP23017_B4         12
+#define MCP23017_B5         13
+#define MCP23017_B6         14
+#define MCP23017_B7         15
+
 
 class MCP23017PinAdapter : AbstractPinAdapter {
 public:
     MCP23017PinAdapter(Adafruit_MCP23017 &mcp) : mcp(mcp) {};
 
     void _pinMode(uint8_t pin, uint8_t mode) override {
-        Serial.println("MCP_pinMode");
+        Serial.print("MCP_pinMode ");
+        Serial.print(pin);
+        Serial.print(" ");
+        Serial.println(mode);
         mcp.pinMode(pin, mode);
     };
 
