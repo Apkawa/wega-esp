@@ -59,30 +59,37 @@ LCD_1602_RUS lcd(0x27, 16, 2); // Check I2C address of LCD, normally 0x27 or 0x3
 #include "HX711.h"
 
 #ifndef LOADCELL_DOUT_PIN
-#define LOADCELL_DOUT_PIN D5 // D5 or GPIO 14
+#define LOADCELL_DOUT_PIN 25 // D5 or GPIO 14
 #endif
 
 #ifndef LOADCELL_SCK_PIN
-#define LOADCELL_SCK_PIN D6 // D6 or GPIO 12
+#define LOADCELL_SCK_PIN 26 // D6 or GPIO 12
 #endif
 
 HX711 scale;
 
 // TODO config from ini/env
 #ifndef CALIBRATION_FACTOR_A
-#define CALIBRATION_FACTOR_A 0.1f
+#define CALIBRATION_FACTOR_A 1841.9052
 #endif
 #ifndef CALIBRATION_FACTOR_B
-#define CALIBRATION_FACTOR_B 2.0f
+#define CALIBRATION_FACTOR_B 1840.6211
 #endif
 
 // Объем тары
 #define CONCENTRATE_TARE_VOLUME 400
 #define TARE_VOLUME 400
 
-#define DEFAULT_PRELOAD 5000
+// Скорость налива
+#define PUMP_SPEED 0.5
+#define ACCURATE_PUMP_DELAY 0
+#define DEFAULT_PRELOAD 2000
+#define REVERSE_DELAY (DEFAULT_PRELOAD * 2)
 
-
+enum Status {
+    READY,
+    PUMP,
+};
 
 enum Side {
     A,
@@ -99,20 +106,24 @@ struct PumpInfo {
     float plan;
 };
 
+Status status = READY;
+uint8_t currentPumpPumped = -1;
+float filteredWeight;
 
 // TODO pass from env
 PumpInfo PUMPS[] = {
-        {shield1.getMotor(1), "Ca(NO3)2",     A},
-        {shield1.getMotor(2), "KNO3",         A},
-        {shield1.getMotor(3), "NH4NO3",       A},
-        {shield1.getMotor(4), "MgSO4",        B},
-        {shield2.getMotor(1), "KH2PO4",       B},
-        {shield2.getMotor(2), "K2SO4",        B},
-        {shield2.getMotor(3), "Micro 1000:1", B},
-        {shield2.getMotor(4), "B",            B},
+        {shield1.getMotor(1), "Ca(NO3)2",     A}, // 1
+        {shield1.getMotor(2), "KNO3",         A}, // 2
+        {shield1.getMotor(4), "NH4NO3",       A}, // 3
+        {shield1.getMotor(3), "MgSO4",        B}, // 4
+        {shield2.getMotor(2), "KH2PO4",       B}, // 5
+        {shield2.getMotor(1), "K2SO4",        B}, // 6
+        {shield2.getMotor(4), "Micro 1000:1", B}, // 7
+        {shield2.getMotor(3), "Fe",            B}, // 8
 };
 
 const uint8_t TOTAL_PUMPS = sizeof PUMPS / sizeof *PUMPS;
+
 
 
 // Функции помп
@@ -131,7 +142,7 @@ void pumpReverse(const PumpInfo *pump) {
 
 
 //Функция налива
-float pumping(const PumpInfo *pump) {
+float pumping(PumpInfo *pump) {
     float planWeight = pump->plan;
     auto name = pump->name;
     // Либо нечего наливать либо наливаем почти всю бутылку
@@ -152,7 +163,7 @@ float pumping(const PumpInfo *pump) {
         lcd.print(name);
         lcd.print(" Reverse...");
         pumpReverse(pump);
-        delay(30000);
+        delay(REVERSE_DELAY);
 
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -165,14 +176,14 @@ float pumping(const PumpInfo *pump) {
         }
         lcd.print(formatFloat(preload, 0));
         lcd.print("ms");
+        //
+        scale.tare(255);
+        //
 
         pumpStart(pump);
         delay(preload);
         pumpStop(pump);
 
-        //
-        scale.tare(255);
-        //
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print(name);
@@ -180,31 +191,38 @@ float pumping(const PumpInfo *pump) {
         lcd.print(formatFloat(planWeight, 2));
 
         lcd.setCursor(10, 0);
-        lcd.print("RUNING");
+        lcd.print("RUN");
 
         float value = scale.get_units(64);
         float pumpedValue = value;
-        uint accuratePumpDelay = 80;
+        uint accuratePumpDelay = ACCURATE_PUMP_DELAY;
         while (value < planWeight - 0.01) {
+            pump->pumped = pumpedValue;
+            server.handleClient();
+
             lcd.setCursor(0, 1);
             lcd.print(value, 2);
             lcd.print(" (");
             lcd.print(100 - (planWeight - value) / planWeight * 100, 0);
             lcd.print("%) ");
-            lcd.print(accuratePumpDelay, 0);
+            lcd.print(formatFloat(accuratePumpDelay, 0));
             lcd.print("ms     ");
 
             pumpStart(pump);
             if (value < (planWeight - 1.5)) {
-                if (planWeight - value > 20) { delay(10000); } else { delay(2000); }
+                if (planWeight - value > 20) {
+                    delay(10000 * PUMP_SPEED);
+                } else {
+                    delay(2000 * PUMP_SPEED);
+                }
                 pumpedValue = value;
-                accuratePumpDelay = 80;
+                accuratePumpDelay = ACCURATE_PUMP_DELAY;
             } else {
                 lcd.setCursor(10, 0);
                 lcd.print("PCIS ");
 
                 if (value - pumpedValue < 0.01) {
-                    if (accuratePumpDelay < 80) {
+                    if (accuratePumpDelay < ACCURATE_PUMP_DELAY) {
                         accuratePumpDelay = accuratePumpDelay + 2;
                     }
                 }
@@ -216,7 +234,9 @@ float pumping(const PumpInfo *pump) {
                 if (value - pumpedValue > 0.1) { accuratePumpDelay = 0; }
 
                 pumpedValue = value;
-                delay(accuratePumpDelay);
+                if (accuratePumpDelay > 0) {
+                    delay(accuratePumpDelay);
+                }
             }
             pumpStop(pump);
             delay(1000);
@@ -260,24 +280,40 @@ void sendReport() {
 void handleRoot() {
     String httpstr = "<meta>"
                      "<h1>Mixer</h1>"
-                     "Plan: <br>";
-    for (int i = 0; i < TOTAL_PUMPS; ++i) {
-        auto pump = PUMPS[i];
-        auto pump_index = formatFloat(i + 1, 0);
-        httpstr += "P" + pump_index + " = " + formatFloat(pump.plan, 3) + " [" + pump.name + "] <br/>";
+                     "<br>";
+    if (status == PUMP && currentPumpPumped >= 0) {
+        auto pump = PUMPS[currentPumpPumped];
+        httpstr += "<meta http-equiv='refresh' content='10'>";
+        httpstr += "<p>Pumped: P"
+                + formatFloat(currentPumpPumped + 1, 0)
+                + " (" + pump.name + ") = "
+                + formatFloat(pump.pumped, 2) + "g </p>";
+    } else {
+        httpstr += "<p>Ready</p>";
     }
-    httpstr += "<br><br><a href=""plan1"">PLAN1 START</a>"
-               "<form action='start' method='get'>";
+
+    httpstr += "<form action='start' method='get'>";
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
         auto pump = PUMPS[i];
         auto pump_index = formatFloat(i + 1, 0);
         auto pump_name = 'p' + pump_index;
+        auto pump_percent = (pump.pumped - pump.plan) / pump.plan * 100;
+        auto pump_value = server.hasArg(pump_name) ? server.arg(pump_name).toFloat() : pump.plan;
         httpstr +=
-                "<p>P" + pump_index + "= <input type='number' min='0' max='500'  name='" + pump_name + "' value='" +
-                server.arg(pump_name) +
-                "'/> " + pump.name + "</p>";
+                "<p>P" + pump_index + "= <input type='number' min='0' max='500' step='0.01' name='" + pump_name + "' value='" +
+                formatFloat(pump_value, 2) +
+                "'/> " + pump.name + " "
+                 + (pump.plan > 0 ? formatFloat(pump.pumped, 2) + "g (" + pump_percent + "%)" : "" )
+                 + "</p>";
     }
-    httpstr += "<p><input type='submit' value='Start'/></p></form>";
+    if (status == READY) {
+
+        httpstr += "<p><input type='submit' value='Start'/>"
+                 "<input type='button' class='button' onclick=\"window.location.href = 'scale';\" value='Scale'/>"
+                 "<input type='button' class='button' onclick=\"window.location.href = 'calibrate';\" value='Calibrate'/>"
+                 "</p></form>" ;
+    }
+
     server.send(200, "text/html", httpstr);
 }
 
@@ -299,6 +335,10 @@ void handleStart() {
     }
     server.send(200, "text/html", httpstr);
 
+    if (status == PUMP)  {
+        return;
+    }
+    status = PUMP;
     scale.tare(255);
     // TODO защита от перелива
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
@@ -309,12 +349,14 @@ void handleStart() {
             scale.set_scale(CALIBRATION_FACTOR_A);
         else
             scale.set_scale(CALIBRATION_FACTOR_B);
-
+        currentPumpPumped = i;
         pump->pumped = pumping(pump);
     }
 #ifdef REPORT_URL
     sendReport();
 #endif
+    lcd.clear();
+    status = READY;
 }
 
 void handleTest() {
@@ -389,11 +431,11 @@ void handlePumpPreloadCalibration() {
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
         auto pump = PUMPS[i];
         auto pump_index = formatFloat(i + 1, 0);
-        httpstr += "P" + pump_index + "=" + formatFloat(pump.preload || DEFAULT_PRELOAD, 0) + "</br>";
+        httpstr += "P" + pump_index + "=" + formatFloat(pump.preload > 0 ? pump.preload : DEFAULT_PRELOAD, 0) + "</br>";
     }
 
     httpstr += "<br><b> Calibration start </b>"
-               "<form action='.' method='get'>";
+               "<form action='/preload' method='post'>";
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
         auto pump_index = formatFloat(i + 1, 0);
         httpstr += "<button type='submit' name='pump' value='"
@@ -405,97 +447,73 @@ void handlePumpPreloadCalibration() {
 
 }
 
-float findCalibrationFactor(float calibratedWeight) {
-    float threshold = 0.01;
-    int iterations = 100;
-    float weight, factor, diff, step, sign;
-    factor = 2000;
-    diff = 1000;
-    while (iterations > 0) {
-        iterations--;
+void handleTare() {
+    scale.tare(255);
+    String message = "<script language='JavaScript' type='text/javascript'>setTimeout('window.history.go(-1)',0);</script>";
+    message += "<input type='button' class='button' onclick='history.back();' value='back'/>";
 
-        weight = scale.get_value(diff < 1 ? 64 : 10);
-        diff = calibratedWeight - weight;
+    server.send(200, "text/html", message);
 
-        sign = +1;
-        if (diff < 0) {
-            sign = -1;
-        }
-        diff = abs(diff);
-        if (diff <= threshold) {
-            break;
-        }
-        step = 100;
-        if (diff < 100) {
-            step = 10;
-        } else if (diff < 10) {
-            step = 0.1;
-        } else if (diff < 1) {
-            step = 0.01;
-        }
-        step *= sign;
-        factor += step;
-        scale.set_scale(factor);
-    }
-    return factor;
+}
+
+void handleDisplayScale (){
+    float raw = scale.read_average(255);
+    String message = "<head><link rel='stylesheet' type='text/css' href='style.css'></head>";
+    message += "<meta http-equiv='refresh' content='5'>";
+    message += "<h3>Current weight = " + formatFloat(filteredWeight,2) + "</h3>";
+    message += "RAW = " + formatFloat(raw,0);
+    message += "<p><input type='button' class='button' onclick=\"window.location.href = 'tare';\" value='Set to ZERO'/>  ";
+    message += "<input type='button' class='button' onclick=\"window.location.href = '/';\" value='Home'/>";
+    message += "</p>";
+
+    server.send(200, "text/html", message);
+
 }
 
 void handleCalibrationScale() {
-    String httpstr = "<meta>"
-                     "<h1>Calibrate</h1>";
+    float raw = scale.read_average(255);
+    String message = "<head><link rel='stylesheet' type='text/css' href='style.css'></head>";
+    message += "Calibrate (calculate scale_calibration value)";
+    message += "<h1>Current RAW = " + formatFloat(raw, 0) + "</h1>";
+    scale.set_scale(CALIBRATION_FACTOR_A);
+    message += "<br><h2>Current Value for point A = " + formatFloat(scale.get_units(128), 2) + "g</h2>";
+    scale.set_scale(CALIBRATION_FACTOR_A);
+    message += "<br><h2>Current Value for point B = " + formatFloat(scale.get_units(128), 2) + "g</h2>";
+    message += "<br>Current scale_calibration_A = " + formatFloat(CALIBRATION_FACTOR_A, 4);
+    message += "<br>Current scale_calibration_B = " + formatFloat(CALIBRATION_FACTOR_B, 4);
+    message += "<form action='' method='get'>";
+    message += "<p>RAW on Zero <input type='text' name='x1' value='" + server.arg("x1") + "'/></p>";
+    message += "<p>RAW value with load <input type='text' name='x2' value='" + server.arg("x2") + "'/></p>";
+    message += "<p>Value with load (gramm) <input type='text' name='s2' value='" + server.arg("s2") + "'/></p>";
+    message += "<p><input type='submit' class='button' value='Submit'/>  ";
+    message += "<input type='button' class='button' onclick=\"window.location.href = 'tare';\" value='Set to ZERO'/>  ";
+    message += "<button class='button'  onClick='window.location.reload();'>Refresh</button>  ";
+    message += "<input class='button' type='button' onclick=\"window.location.href = '/';\" value='Home'/>";
+    message += "</p>";
 
-    httpstr += "A=" + formatFloat(CALIBRATION_FACTOR_A, 3) + "<br>";
-    httpstr += "B=" + formatFloat(CALIBRATION_FACTOR_B, 3) + "<br>";
+    float x1 = server.arg("x1").toFloat();
+    float x2 = server.arg("x2").toFloat();
+    float s2 = server.arg("s2").toFloat();
+    float k, y, s;
 
-    httpstr += "";
-
-    float calA = server.arg("a").toFloat();
-    float calB = server.arg("b").toFloat();
-    bool autoCalA = server.arg("auto").toInt() == 1;
-    bool autoCalB = server.arg("auto").toInt() == 2;
-    float calibratedWeight = server.arg("weight").toFloat();
-
-    if (autoCalA) {
-        calA = findCalibrationFactor(calibratedWeight);
-    } else if (autoCalB) {
-        calB = findCalibrationFactor(calibratedWeight);
+    if (s2 != 0) {
+        k = -(x1 - x2) / s2;
+        message += "<br> scale_calibration = <b>" + formatFloat(k, 4) + "</b> copy and paste to your sketch";
     }
 
-    scale.set_scale(calA);
-    auto weightA = scale.get_value(64);
+    if (x1 > 0 and x2 > 0) {
+        y = -(s2 * x1) / (x1 - x2);
+        message += "<br>Calculate preloaded weight = " + formatFloat(y, 2) + "g";
+    }
 
-    scale.set_scale(calB);
-    auto weightB = scale.get_value(64);
+    if (s2 != 0) {
+        s = raw * (1 / k) - y;
+        message += "<br>Calculate weight = " + formatFloat(s, 2) + "g";
+    }
 
-    httpstr += "Weight A=" + formatFloat(weightA, 2) + "<br>";
-    httpstr += "Weight B=" + formatFloat(weightB, 2) + "<br>";
-
-    httpstr += "<br><b> Calibration start </b>"
-               "<form action='.' method='get'>";
-    httpstr +=
-            "<p> Calibrated weight: <input type='number' min='0' max='1000' step='0.01'  name='weight' value='"
-            + formatFloat(calibratedWeight, 2)
-            + "'/></p>"
-              "<p> Scale A: <input type='number'  step='0.01'  name='a' value='"
-            +
-            formatFloat(calA, 2)
-            + "'/></p>"
-              "<p> Scale B: <input type='number'  step='0.01'  name='b' value='"
-            +
-            formatFloat(calB, 2)
-            + "'/></p>"
-              "";
-
-    httpstr += "<p>"
-               "<button type='submit'>Check</button>"
-               "<button type='submit' name='auto' value='1'>Auto A</button>"
-               "<button type='submit' name='auto' value='2'>Auto B</button>"
-               "</p>";
-    httpstr += "</form>";
-
-    server.send(200, "text/html", httpstr);
-
+    server.send(200, "text/html", message);
 }
+
 
 void setup() {
     Serial.begin(SERIAL_SPEED);
@@ -513,12 +531,14 @@ void setup() {
     server.on("/", handleRoot);
     server.on("/start", handleStart);
     server.on("/test", handleTest);
-    server.on("/scale", handleCalibrationScale);
+    server.on("/calibrate", handleCalibrationScale);
+    server.on("/scale", handleDisplayScale);
+    server.on("/tare", handleTare);
     server.on("/preload", handlePumpPreloadCalibration);
     server.begin();
 
     scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-    scale.set_scale(1753.f); //A side
+    scale.set_scale(CALIBRATION_FACTOR_A); //A side
     scale.power_up();
 
 
@@ -526,25 +546,33 @@ void setup() {
     lcd.print("Start");
     Serial.println("Start");
 
-    delay (3000);
-    scale.tare(255);
+    server.handleClient();
+    Ota::loop();
+
+    delay(5000);
+    if (scale.wait_ready_timeout()) {
+        scale.tare(10);
+    }
+    Serial.println("Ready");
 }
 
 void loop() {
     server.handleClient();
     Ota::loop();
 
-    Serial.println(".");
-
     lcd.setCursor(0, 1);
-    float weight = scale.get_units(16);
-    float filtered_weight = kalman_filter(weight);
-    lcd.print(filtered_weight, 2);
+    if (scale.wait_ready_timeout()) {
+        float weight = scale.get_units(16);
+        filteredWeight = kalman_filter(weight);
+        lcd.print(filteredWeight, 2);
+        Serial.println(filteredWeight);
+    } else {
+        lcd.print("SCALE ERR");
+    }
     lcd.print("         ");
     lcd.setCursor(10, 0);
     lcd.print("Ready  ");
     lcd.setCursor(0, 0);
-
 }
 
 

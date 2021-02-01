@@ -9,9 +9,9 @@ const uint serial = SERIAL_SPEED;
 #include "HX711.h"
 
 // GPIO17
-const int LOADCELL_DOUT_PIN = 25;
+const int LOADCELL_DOUT_PIN = D5;
 // GPIO16
-const int LOADCELL_SCK_PIN = 26;
+const int LOADCELL_SCK_PIN = D6;
 
 HX711 scale;
 
