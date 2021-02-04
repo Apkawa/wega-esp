@@ -70,10 +70,10 @@ HX711 scale;
 
 // TODO config from ini/env
 #ifndef CALIBRATION_FACTOR_A
-#define CALIBRATION_FACTOR_A 1841.9052
+#define CALIBRATION_FACTOR_A 1840.7637
 #endif
 #ifndef CALIBRATION_FACTOR_B
-#define CALIBRATION_FACTOR_B 1840.6211
+#define CALIBRATION_FACTOR_B 1839.7787
 #endif
 
 // Объем тары
@@ -83,7 +83,7 @@ HX711 scale;
 // Скорость налива
 #define PUMP_SPEED 0.5
 #define ACCURATE_PUMP_DELAY 0
-#define DEFAULT_PRELOAD 2000
+#define DEFAULT_PRELOAD 3000
 #define REVERSE_DELAY (DEFAULT_PRELOAD * 2)
 
 enum Status {

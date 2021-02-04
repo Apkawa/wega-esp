@@ -134,21 +134,11 @@ void AFShield<PinAdapter>::motor(uint8_t nMotor, uint8_t command, int speed){
 
 template<class PinAdapter>
 void AFShield<PinAdapter>::_pinMode(uint8_t pin, uint8_t mode) const {
-    Serial.print("PIN_MODE");
-    Serial.print(pin);
-    Serial.print(" ");
-    Serial.println(mode);
-
     pinAdapter->_pinMode(pin, mode);
 }
 
 template<class PinAdapter>
 void AFShield<PinAdapter>::_digitalWrite(uint8_t pin, uint8_t val) const {
-    Serial.print("digitalWrite");
-    Serial.print(pin);
-    Serial.print(" ");
-    Serial.println(val);
-
     pinAdapter->_digitalWrite(pin, val);
 }
 
@@ -159,13 +149,6 @@ void AFShield<PinAdapter>::_analogWrite(uint8_t pin, uint8_t val) const {
 
 template<class PinAdapter>
 void AFShield<PinAdapter>::_shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val) const {
-    Serial.print("shiftOut");
-    Serial.print(dataPin);
-    Serial.print(" ");
-    Serial.print(clockPin);
-    Serial.print(" ");
-    Serial.println(val);
-
     pinAdapter->_shiftOut(dataPin, clockPin, bitOrder, val);
 }
 
@@ -185,16 +168,12 @@ const AFShield<PinAdapter> &AFShield<PinAdapter>::AFMotor::getShield() const {
 
 template<class PinAdapter>
 void AFShield<PinAdapter>::AFMotor::forward()  const {
-    Serial.print("Motor forward ");
-    Serial.println(number);
     auto s = const_cast<decltype(shield)>(getShield());
     s.motor(number, FORWARD, 255);
 }
 
 template<class PinAdapter>
 void AFShield<PinAdapter>::AFMotor::backward() const {
-    Serial.print("Motor backward ");
-    Serial.println(number);
     auto s = const_cast<decltype(shield)>(getShield());
     s.motor(number, BACKWARD, 255);
 
@@ -202,16 +181,12 @@ void AFShield<PinAdapter>::AFMotor::backward() const {
 
 template<class PinAdapter>
 void AFShield<PinAdapter>::AFMotor::stop() const {
-    Serial.print("Motor stop ");
-    Serial.println(number);
     auto s = const_cast<decltype(shield)>(getShield());
     s.motor(number, BRAKE, 255);
 }
 
 template<class PinAdapter>
 void AFShield<PinAdapter>::AFMotor::release() const {
-    Serial.print("Motor release ");
-    Serial.println(number);
     auto s = const_cast<decltype(shield)>(getShield());
     s.motor(number, RELEASE, 255);
 }

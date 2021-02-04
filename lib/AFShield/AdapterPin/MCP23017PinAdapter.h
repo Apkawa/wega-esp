@@ -32,15 +32,10 @@ public:
     MCP23017PinAdapter(Adafruit_MCP23017 &mcp) : mcp(mcp) {};
 
     void _pinMode(uint8_t pin, uint8_t mode) override {
-        Serial.print("MCP_pinMode ");
-        Serial.print(pin);
-        Serial.print(" ");
-        Serial.println(mode);
         mcp.pinMode(pin, mode);
     };
 
     void _digitalWrite(uint8_t pin, uint8_t val) override {
-        Serial.println("MCP_digitalWrite");
         mcp.digitalWrite(pin, val);
     }
 
