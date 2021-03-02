@@ -70,10 +70,10 @@ HX711 scale;
 
 // TODO config from ini/env
 #ifndef CALIBRATION_FACTOR_A
-#define CALIBRATION_FACTOR_A 1840.7637
+#define CALIBRATION_FACTOR_A 1844.7990
 #endif
 #ifndef CALIBRATION_FACTOR_B
-#define CALIBRATION_FACTOR_B 1839.7787
+#define CALIBRATION_FACTOR_B 1843.6873
 #endif
 
 // Объем тары
@@ -114,12 +114,12 @@ float filteredWeight;
 PumpInfo PUMPS[] = {
         {shield1.getMotor(1), "Ca(NO3)2",     A}, // 1
         {shield1.getMotor(2), "KNO3",         A}, // 2
-        {shield1.getMotor(4), "NH4NO3",       A}, // 3
-        {shield1.getMotor(3), "MgSO4",        B}, // 4
-        {shield2.getMotor(2), "KH2PO4",       B}, // 5
-        {shield2.getMotor(1), "K2SO4",        B}, // 6
-        {shield2.getMotor(4), "Micro 1000:1", B}, // 7
-        {shield2.getMotor(3), "Fe",            B}, // 8
+        {shield1.getMotor(3), "NH4NO3",       A}, // 3
+        {shield1.getMotor(4), "MgSO4",        B}, // 4
+        {shield2.getMotor(1), "KH2PO4",       B}, // 5
+        {shield2.getMotor(2), "K2SO4",        B}, // 6
+        {shield2.getMotor(3), "Micro 1000:1", B}, // 7
+        {shield2.getMotor(4), "Fe",           B}, // 8
 };
 
 const uint8_t TOTAL_PUMPS = sizeof PUMPS / sizeof *PUMPS;
