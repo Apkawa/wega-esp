@@ -92,6 +92,7 @@ enum Status {
 };
 
 enum Side {
+    null,
     A,
     B
 };
@@ -109,6 +110,10 @@ struct PumpInfo {
 Status status = READY;
 uint8_t currentPumpPumped = -1;
 float filteredWeight;
+// Для проверки ошибки
+float weightBeforePump = 0;
+float weightSideA = 0;
+float weightSideB = 0;
 
 // TODO pass from env
 PumpInfo PUMPS[] = {
@@ -124,7 +129,10 @@ PumpInfo PUMPS[] = {
 
 const uint8_t TOTAL_PUMPS = sizeof PUMPS / sizeof *PUMPS;
 
-
+// Получаем полный вес на весах до тарирования
+float get_scale_full_weight(byte times) {
+    return scale.read_average(times) / scale.get_scale();
+}
 
 // Функции помп
 
@@ -285,33 +293,92 @@ void handleRoot() {
         auto pump = PUMPS[currentPumpPumped];
         httpstr += "<meta http-equiv='refresh' content='10'>";
         httpstr += "<p>Pumped: P"
-                + formatFloat(currentPumpPumped + 1, 0)
-                + " (" + pump.name + ") = "
-                + formatFloat(pump.pumped, 2) + "g </p>";
+                   + formatFloat(currentPumpPumped + 1, 0)
+                   + " (" + pump.name + ") = "
+                   + formatFloat(pump.pumped, 2) + "g </p>";
     } else {
         httpstr += "<p>Ready</p>";
     }
 
     httpstr += "<form action='start' method='get'>";
+    Side side = null;
+    uint8_t changed = -1;
+    float totalPlanWeight = 0;
+    float totalPumpedA = weightSideA - weightBeforePump;
+    float totalPumpedB = weightSideB - weightSideA;
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
         auto pump = PUMPS[i];
         auto pump_index = formatFloat(i + 1, 0);
         auto pump_name = 'p' + pump_index;
         auto pump_percent = (pump.pumped - pump.plan) / pump.plan * 100;
         auto pump_value = server.hasArg(pump_name) ? server.arg(pump_name).toFloat() : pump.plan;
+
+        if (side != pump.side) {
+            side = pump.side;
+            changed += 1;
+            if (changed) {
+                httpstr +=
+                        "<p>"
+                        " Total plan: " + formatFloat(totalPlanWeight, 2) + "g "
+
+                        + (
+                                totalPumpedA > 0 ?
+                                "pumped: "
+                                + formatFloat(totalPumpedA, 2) // todo sides more than A and B
+                                + "g; Error: "
+                                + formatFloat((totalPumpedA - totalPlanWeight) / totalPlanWeight * 100, 2)
+                                + "%"
+                                                 : ""
+                        )
+                        + "</p>";
+                changed = 0;
+                totalPlanWeight = 0;
+            }
+
+            httpstr += "<h3>Side ";
+            switch (side) {
+                case A:
+                    httpstr += "A";
+                    break;
+                case B:
+                    httpstr += "B";
+                    break;
+            }
+            httpstr += "</h3>";
+        }
+
+        totalPlanWeight += pump_value;
+
         httpstr +=
-                "<p>P" + pump_index + "= <input type='number' min='0' max='500' step='0.01' name='" + pump_name + "' value='" +
+                "<p>P" + pump_index + "= <input type='number' min='0' max='500' step='0.01' name='" + pump_name +
+                "' value='" +
                 formatFloat(pump_value, 2) +
                 "'/> " + pump.name + " "
-                 + (pump.plan > 0 ? formatFloat(pump.pumped, 2) + "g (" + pump_percent + "%)" : "" )
-                 + "</p>";
+                + (pump.plan > 0 ? formatFloat(pump.pumped, 2) + "g (" + pump_percent + "%)" : "")
+                + "</p>";
     }
-    if (status == READY) {
 
+    httpstr +=
+            "<p>"
+            " Total plan: " + formatFloat(totalPlanWeight, 2) + "g "
+
+            + (
+                    totalPumpedB > 0 ?
+                    "pumped: "
+                    + formatFloat(totalPumpedB, 2) // todo sides more than A and B
+                    + "g; Error "
+                    + formatFloat((totalPumpedB - totalPlanWeight) / totalPlanWeight * 100, 2)
+                    + "%"
+                                     : ""
+            )
+            + "</p>";
+
+    if (status == READY) {
         httpstr += "<p><input type='submit' value='Start'/>"
-                 "<input type='button' class='button' onclick=\"window.location.href = 'scale';\" value='Scale'/>"
-                 "<input type='button' class='button' onclick=\"window.location.href = 'calibrate';\" value='Calibrate'/>"
-                 "</p></form>" ;
+                   "<input type='button' class='button' onclick=\"window.location.href = 'scale';\" value='Scale'/>"
+                   "<input type='button' class='button' onclick=\"window.location.href = 'calibrate';\" value='Calibrate'/>"
+                   "</p></form>";
+
     }
 
     server.send(200, "text/html", httpstr);
@@ -319,12 +386,18 @@ void handleRoot() {
 
 
 void handleStart() {
+
     for (int i = 0; i < TOTAL_PUMPS; ++i) {
         auto pump = &PUMPS[i];
         auto pump_index = formatFloat(i + 1, 0);
         String pump_name = String('p' + pump_index);
-        pump->plan = server.arg(pump_name).toFloat();
+        // Нельзя поменять задание в процессе налива
+        if (status != PUMP) {
+            pump->plan = server.arg(pump_name).toFloat();
+            pump->pumped = 0;
+        }
     }
+
 
     String httpstr = "<h1>Mixer start</h1>"
                      "Plan: <br>";
@@ -335,9 +408,11 @@ void handleStart() {
     }
     server.send(200, "text/html", httpstr);
 
-    if (status == PUMP)  {
+    if (status == PUMP) {
         return;
     }
+
+    weightBeforePump = weightSideA = weightSideB = get_scale_full_weight(32);
     status = PUMP;
     scale.tare(255);
     // TODO защита от перелива
@@ -351,6 +426,12 @@ void handleStart() {
             scale.set_scale(CALIBRATION_FACTOR_B);
         currentPumpPumped = i;
         pump->pumped = pumping(pump);
+
+        if (pump->side == A) {
+            weightSideA = get_scale_full_weight(32);
+        } else {
+            weightSideB = get_scale_full_weight(32);
+        }
     }
 #ifdef REPORT_URL
     sendReport();
@@ -456,12 +537,12 @@ void handleTare() {
 
 }
 
-void handleDisplayScale (){
+void handleDisplayScale() {
     float raw = scale.read_average(255);
     String message = "<head><link rel='stylesheet' type='text/css' href='style.css'></head>";
     message += "<meta http-equiv='refresh' content='5'>";
-    message += "<h3>Current weight = " + formatFloat(filteredWeight,2) + "</h3>";
-    message += "RAW = " + formatFloat(raw,0);
+    message += "<h3>Current weight = " + formatFloat(filteredWeight, 2) + "</h3>";
+    message += "RAW = " + formatFloat(raw, 0);
     message += "<p><input type='button' class='button' onclick=\"window.location.href = 'tare';\" value='Set to ZERO'/>  ";
     message += "<input type='button' class='button' onclick=\"window.location.href = '/';\" value='Home'/>";
     message += "</p>";
