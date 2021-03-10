@@ -19,6 +19,7 @@ void setup() {
     Serial.println("Booting");
 
     wifi::setup();
+    wifi::setup_server(&server);
     Ota::setup();
 
     server.on("/", handleRoot);

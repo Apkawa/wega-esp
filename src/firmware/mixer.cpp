@@ -605,6 +605,7 @@ void setup() {
     lcd.print("Booting...");
 
     wifi::setup();
+    wifi::setup_server(&server);
     Ota::setup();
 
     mcp.begin();
