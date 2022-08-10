@@ -4,7 +4,8 @@
 
 Базируется на [siv237/WEGA-Mixer](https://github.com/siv237/WEGA-Mixer)
 
-* [Оригинальная схема](scheme_original.pdf)
+* [Оригинальная схема](./scheme_original.pdf)
+* [Доработанная схема на основе Adafruit motor shield v1](./scheme_adafruit_motor_shield_v1.pdf)
 * [ponics_ru/8760](https://t.me/ponics_ru/87060)
 
 Миксер работает на esp8266
